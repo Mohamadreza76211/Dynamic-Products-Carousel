@@ -1,164 +1,278 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/swiper-bundle.css";
-import SwiperCore, { EffectCoverflow, Pagination } from "swiper";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { useRef, useEffect, useState } from "react";
+import { register } from "swiper/element/bundle";
+import Image from "next/image";
+import "./Carousel.scss";
+import Link from "next/link";
+import useWindowDimensions from "../../hooks/useWindowDimensions";
+import { Navigation, Pagination } from "swiper/modules";
+import { Button } from "antd";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { getMerchantProductAction } from "@/actions/shop-actions";
+import { convertRialToToman, numberWithCommas } from "@/libs/utils";
+import useCartStore from "@/store/useCartStore";
+import { Oval } from "react-loader-spinner";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 
-SwiperCore.use([EffectCoverflow, Pagination]);
+register();
 
-const CurveSlider = ({ selectedCategory, cats }) => {
-  const [slides, setSlides] = useState([]);
-  const [visibleNames, setVisibleNames] = useState([]);
-  const [visibleUids, setVisibleUids] = useState([]);
-  const [selectedSlideIndex, setSelectedSlideIndex] = useState(2);
-  const [isClicked, setIsClicked] = useState(false);
-  const [displayedSlideIndex, setDisplayedSlideIndex] =
-    useState(selectedSlideIndex);
-  const [showNames, setShowNames] = useState(false);
-  const [backgroundColors, setBackgroundColors] = useState([]);
+const SliderCard = ({ item }) => {
+  let { width } = useWindowDimensions();
+  let [image, set_image] = useState(item.image);
+  const { addToCart, decrementItemCount, getItemCount } = useCartStore();
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const count = getItemCount(item?.uid);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
 
-  const cid = searchParams.get("cid");
-  const mid = searchParams.get("mid");
-
-  const parentsCategories = cats.filter((cat) => !cat.parent);
-  const level1 = parentsCategories;
-
-  const level2 = [];
-  level1.forEach((l1) => {
-    if (l1.childes?.length > 0) {
-      l1.childes.forEach((l2) => {
-        level2.push({ ...l2, parent: l1 });
-      });
-    }
-  });
-
-  const level3 = [];
-  level2.forEach((l2) => {
-    if (l2.childes?.length > 0) {
-      l2.childes.forEach((l3) => {
-        level3.push({ ...l3, parent: l2 });
-      });
-    }
-  });
-
-  const getVisibleImagesV1 = () => {
-    const allImages = level1;
-    const visibleImages = allImages.map((c) => c.image);
-    const visibleNamesArray = allImages.map((c) => c.name);
-    const visibleUidsArray = allImages.map((c) => c.uid);
-    const backgroundColorsArray = allImages.map(
-      (c) => c.color_code || "transparent"
-    );
-
-    setVisibleNames(visibleNamesArray);
-    setVisibleUids(visibleUidsArray);
-    setBackgroundColors(backgroundColorsArray);
-
-    return visibleImages;
+  const changeImageToHover = (i) => {
+    return i ? i.replace("%231", "%23model") : "";
   };
-
-  const swiperRef = useRef(null);
+  const [hoverImage, set_hoverImage] = useState(changeImageToHover(item.image));
 
   useEffect(() => {
-    const images = getVisibleImagesV1();
-    setSlides(images);
-  }, [cats]);
+    if (width > 600) set_image(item.image);
+    else set_image(item.image);
+  }, [width]);
 
-  const handleSlideChange = (swiper) => {
-    const newIndex = swiper.realIndex;
-    setSelectedSlideIndex(newIndex);
-    setIsClicked(false);
-  };
-
-  const handleSlideClick = (index) => {
-    setSelectedSlideIndex(index);
-    setDisplayedSlideIndex(index);
-    setIsClicked(true);
-    setShowNames(true);
-
-    const catUid = visibleUids[index];
-    router.push(`/shop/search?cid=${catUid}&mid=${mid}`);
+  // Function to truncate text if it's longer than 40 characters
+  const truncateText = (text) => {
+    if (text.length > 60) {
+      return text.substring(0, 60) + "...";
+    }
+    return text;
   };
 
   return (
-    <section
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Swiper
-        className="by"
-        ref={swiperRef}
-        effect="coverflow"
-        grabCursor={true}
-        centeredSlides={true}
-        slidesPerView={3}
-        coverflowEffect={{
-          rotate: 0,
-          stretch: 0,
-          depth: 100,
-          modifier: 2,
-          slideShadows: true,
-        }}
-        pagination={false}
-        loop={true}
-        initialSlide={0}
-        onSlideChange={handleSlideChange}
-        style={{ padding: "50px 0", width: "94%" }}
-      >
-        {slides?.map((slide, index) => (
-          <SwiperSlide
-            className="hello"
-            key={index}
-            onClick={() => handleSlideClick(index)}
-            style={{
-              backgroundImage: `url(${slide})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundColor: backgroundColors[index],
-              width: "358px",
-              height: "400px",
-              borderRadius: "10px",
-              boxShadow: "0 15px 50px rgba(0, 0, 0, 0.2)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          />
-        ))}
-      </Swiper>
+    <div className="slider-card">
       <div
         style={{
           display: "flex",
           justifyContent: "center",
-          marginTop: "-30px",
+          flexDirection: "column",
         }}
       >
-        {showNames &&
-          visibleNames.map((name, index) => (
-            <div
-              key={index}
-              style={{
-                padding: "10px",
-                color: "black",
-                textAlign: "center",
-                fontWeight: "bold",
-                display: displayedSlideIndex === index ? "block" : "none",
-              }}
-            >
-              {name}
-            </div>
-          ))}
+        <div
+          style={{ width: "100%", display: "flex", justifyContent: "center" }}
+        >
+          <div className="image-container">
+            <Link href={`/shop/products/${item.uid}`}>
+              <Image
+                className="slider-image-carousel"
+                src={image}
+                width={1500}
+                height={350}
+                alt=""
+              />
+              <Image
+                className="sub-image"
+                src={hoverImage}
+                width={1500}
+                height={350}
+                alt=""
+              />
+            </Link>
+            {count > 0 ? (
+              <div className="bio-regal-cart-actions">
+                {!isLoadingProduct ? (
+                  <button
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      padding: "11px",
+                    }}
+                    className="inc-btn"
+                    onClick={async () => {
+                      setIsLoadingProduct(true);
+                      await addToCart(item.merchant.uid, item);
+                      setIsLoadingProduct(false);
+                    }}
+                  >
+                    <span style={{ fontSize: "17px", paddingTop: "4px" }}>
+                      <FontAwesomeIcon icon={faPlus} />
+                    </span>
+                  </button>
+                ) : null}
+                <div style={{ paddingRight: "8px", paddingLeft: "8px" }}>
+                  {isLoadingProduct ? (
+                    <Oval
+                      visible={true}
+                      height="20"
+                      width="20"
+                      color="#FFFFFF"
+                      ariaLabel="oval-loading"
+                      wrapperStyle={{}}
+                      wrapperClass=""
+                    />
+                  ) : (
+                    count
+                  )}
+                </div>
+                {!isLoadingProduct ? (
+                  <button
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      padding: "11px",
+                    }}
+                    className="dec-btn"
+                    onClick={async () => {
+                      setIsLoadingProduct(true);
+                      await decrementItemCount(item.merchant.uid, item);
+                      setIsLoadingProduct(false);
+                    }}
+                  >
+                    <span style={{ fontSize: "17px", paddingTop: "4px" }}>
+                      <FontAwesomeIcon icon={faMinus} />
+                    </span>
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <span
+                className="positive-button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  console.log(`Button clicked for item: ${item.uid}`);
+                  setIsLoadingProduct(true);
+                  await addToCart(item.merchant.uid, item);
+                  setIsLoadingProduct(false);
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faPlus}
+                  style={{ width: "", height: "15px" }}
+                />
+              </span>
+            )}
+          </div>
+        </div>
+        <Link href={`/shop/products/${item.uid}`}>
+          <div className="description-box">
+            <h3 className="product-title">{truncateText(item?.name)}</h3>
+            <p className="brand-name">{truncateText(item?.brand?.name)}</p>
+            {item?.discont > 0 ? (
+              <p className="discount-price">
+                {" "}
+                تومان
+                {numberWithCommas(convertRialToToman(item?.price_original))}
+              </p>
+            ) : null}
+            <p className="product-price">
+              {" "}
+              تومان
+              {numberWithCommas(convertRialToToman(item?.price))}
+            </p>
+          </div>
+        </Link>
       </div>
-    </section>
+    </div>
   );
 };
 
-export default CurveSlider;
+const Carousel = ({ section, merchant }) => {
+  const swiperElRef = useRef(null);
+  const [regalItems, setRegalItems] = useState([]);
+
+  useEffect(() => {
+    if (section?.items?.length > 0) {
+      getProductsWithCat(section.items[0].link_to_uid);
+    }
+  }, [section]);
+
+  const getProductsWithCat = async (catId) => {
+    try {
+      let filters = { category__uid: catId, ordering: "regal_index" };
+      const products = await getMerchantProductAction(filters, merchant.uid);
+      console.log("products : ", products);
+      setRegalItems(products.results);
+    } catch (e) {
+      console.log("error : ", e);
+    }
+  };
+
+  useEffect(() => {
+    const swiperEl = swiperElRef.current;
+    const swiperInstance = swiperEl.swiper;
+
+    if (swiperInstance) {
+      swiperInstance.params.breakpoints = {
+        0: {
+          slidesPerView: 3,
+          spaceBetween: 4,
+        },
+        576: {
+          slidesPerView: 2,
+          spaceBetween: 4,
+        },
+        768: {
+          slidesPerView: 3,
+          spaceBetween: -8,
+        },
+        1024: {
+          slidesPerView: 4,
+          spaceBetween: -8,
+        },
+        1200: {
+          slidesPerView: 5,
+          spaceBetween: -8,
+        },
+      };
+      swiperInstance.update();
+    }
+  }, [regalItems]);
+
+  const handleNextSlide = () => {
+    if (swiperElRef.current) {
+      swiperElRef.current.swiper.slideNext();
+    }
+  };
+
+  const handlePrevSlide = () => {
+    if (swiperElRef.current) {
+      swiperElRef.current.swiper.slidePrev();
+    }
+  };
+
+  return (
+    <div className="MainWrapper" style={{ margin: "12px 3.5%" }}>
+      <div>
+        <div>
+          <div style={{ width: "100%", height: "50px", position: "relative" }}>
+            <div className="slider-buttons">
+              <Button
+                className="slider-button prev"
+                onClick={handlePrevSlide}
+                icon={<RightOutlined />}
+              />
+              <Button
+                className="slider-button next"
+                onClick={handleNextSlide}
+                icon={<LeftOutlined />}
+              />
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="slider-section">
+            <swiper-container
+              ref={swiperElRef}
+              autoplay="false"
+              navigation="false"
+              pagination="false"
+              modules={[Navigation, Pagination]}
+            >
+              {regalItems?.map((item) => (
+                <swiper-slide key={item.uid}>
+                  <SliderCard item={item} />
+                </swiper-slide>
+              ))}
+            </swiper-container>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Carousel;
